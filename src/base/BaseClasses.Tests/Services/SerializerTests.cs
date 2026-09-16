@@ -123,6 +123,25 @@ namespace BaseClasses.Tests.Services
         }
 
         [Fact]
+        public void SerializeAndDeserialize_Element_RoundTripPreservesPublicId()
+        {
+            var path = NewTempFilePath();
+            try
+            {
+                var source = new Element(ElemType.Location, "Castle");
+
+                Serializer.Serialize(source, path);
+                var restored = Serializer.Deserialize<Element>(path);
+
+                Assert.Equal(source.Id, restored.Id);
+            }
+            finally
+            {
+                if (File.Exists(path)) File.Delete(path);
+            }
+        }
+
+        [Fact]
         public void SerializeAndDeserialize_Plot_RoundTripPreservesElementsRelationsAndTime()
         {
             var path = NewTempFilePath();

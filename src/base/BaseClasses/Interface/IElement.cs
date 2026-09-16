@@ -1,4 +1,5 @@
-﻿using BaseClasses.Enum;
+﻿using System;
+using BaseClasses.Enum;
 using BaseClasses.Model.Params;
 
 namespace BaseClasses.Interface
@@ -8,6 +9,8 @@ namespace BaseClasses.Interface
     /// </summary>
     public interface IElement
     {
+        Guid Id { get; }
+
         /// <summary>
         /// Тип элемента
         /// </summary>

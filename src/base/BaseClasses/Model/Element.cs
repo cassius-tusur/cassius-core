@@ -12,6 +12,8 @@ namespace BaseClasses.Model
     public class Element : IElement, IEquatable<Element>
     {
         private readonly Guid _id = Guid.NewGuid();
+
+        public Guid Id => _id;
         
         /// <summary>
         /// Тип элемента.
