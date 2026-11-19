@@ -74,7 +74,7 @@ namespace BaseClasses.Model
 
         public override bool Equals(object? obj)
         {
-            return obj?.GetType() == GetType() && Equals((Element)obj);
+            return obj is Element other && Equals(other);
         }
 
         public bool Equals(Element? other)

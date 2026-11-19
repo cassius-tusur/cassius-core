@@ -30,11 +30,32 @@ namespace BaseClasses.Tests.Model
             Assert.Equal(first.GetHashCode(), second.GetHashCode());
         }
 
+        [Fact]
+        public void Equals_ElementsWithSameIdAcrossSubclasses_ReturnsTrue()
+        {
+            var id = Guid.Parse("33333333-3333-3333-3333-333333333333");
+            var element = new Element(ElemType.Character, "Base");
+            var derivedElement = new DerivedElement(ElemType.Location, "Derived");
+            SetId(element, id);
+            SetId(derivedElement, id);
+
+            Assert.True(((object)element).Equals(derivedElement));
+            Assert.True(((object)derivedElement).Equals(element));
+        }
+
         private static void SetId(Element element, Guid id)
         {
             var idField = typeof(Element).GetField("_id", BindingFlags.Instance | BindingFlags.NonPublic);
             Assert.NotNull(idField);
             idField!.SetValue(element, id);
+        }
+
+        private sealed class DerivedElement : Element
+        {
+            public DerivedElement(ElemType type, string name)
+                : base(type, name)
+            {
+            }
         }
     }
 }
