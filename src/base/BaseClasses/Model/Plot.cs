@@ -52,7 +52,7 @@ namespace BaseClasses.Model
         public void Add(IElement element)
         {
             var existingElement = Elements.FirstOrDefault(candidate => candidate.Id == element.Id);
-            if (existingElement is not null)
+            if (existingElement != null)
             {
                 if (ReferenceEquals(existingElement, element)) return;
                 throw new InvalidOperationException($"An element with id '{element.Id}' is already part of the plot.");
