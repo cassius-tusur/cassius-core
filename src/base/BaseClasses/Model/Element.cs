@@ -81,15 +81,12 @@ namespace BaseClasses.Model
         {
             if (other is null) return false;
             if (ReferenceEquals(this, other)) return true;
-            return Type == other.Type &&
-                   Name == other.Name &&
-                   Description == other.Description &&
-                   Time == other.Time;
+            return Id == other.Id;
         }
 
         public override int GetHashCode()
         {
-            return HashCode.Combine(_id);
+            return Id.GetHashCode();
         }
     }
 }

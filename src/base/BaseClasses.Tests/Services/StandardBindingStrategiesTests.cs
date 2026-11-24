@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using BaseClasses.Enum;
 using BaseClasses.Interface;
@@ -24,6 +25,8 @@ namespace BaseClasses.Tests.Services
             yield return new object[] { ElemType.Event, ElemType.Character, BaseRelationKeys.Involves, BaseRelationKeys.Participates };
             yield return new object[] { ElemType.Event, ElemType.Item, BaseRelationKeys.Uses, BaseRelationKeys.Used };
             yield return new object[] { ElemType.Event, ElemType.Location, BaseRelationKeys.Located, BaseRelationKeys.Locates };
+            yield return new object[] { ElemType.Character, ElemType.Character, BaseRelationKeys.Parent, BaseRelationKeys.Child };
+            yield return new object[] { ElemType.Character, ElemType.Character, BaseRelationKeys.Child, BaseRelationKeys.Parent };
         }
 
         [Theory]
@@ -107,6 +110,54 @@ namespace BaseClasses.Tests.Services
             Assert.True(HasRelation(plot, newLocation, item, BaseRelationKeys.Locates));
         }
 
+        [Fact]
+        public void BindCharacterParent_AllowsMoreThanTwoParents()
+        {
+            var plot = new Plot();
+            var child = new Element(ElemType.Character, "Child");
+            var firstParent = new Element(ElemType.Character, "First");
+            var secondParent = new Element(ElemType.Character, "Second");
+            var thirdParent = new Element(ElemType.Character, "Third");
+            plot.Add(child);
+            plot.Add(firstParent);
+            plot.Add(secondParent);
+            plot.Add(thirdParent);
+
+            plot.Bind(firstParent, child, BaseRelationKeys.Parent, true);
+            plot.Bind(secondParent, child, BaseRelationKeys.Parent, true);
+            plot.Bind(thirdParent, child, BaseRelationKeys.Parent, true);
+
+            Assert.True(HasRelation(plot, firstParent, child, BaseRelationKeys.Parent));
+            Assert.True(HasRelation(plot, secondParent, child, BaseRelationKeys.Parent));
+            Assert.True(HasRelation(plot, thirdParent, child, BaseRelationKeys.Parent));
+            Assert.True(HasRelation(plot, child, firstParent, BaseRelationKeys.Child));
+            Assert.True(HasRelation(plot, child, secondParent, BaseRelationKeys.Child));
+            Assert.True(HasRelation(plot, child, thirdParent, BaseRelationKeys.Child));
+        }
+
+        [Theory]
+        [InlineData(ElemType.Character, ElemType.Location, "Parent", "Child")]
+        [InlineData(ElemType.Character, ElemType.Location, "Child", "Parent")]
+        public void Bind_UnsupportedElementPairs_DoNotCreateReciprocalRelations(
+            ElemType sourceType,
+            ElemType targetType,
+            string forwardKeyName,
+            string reverseKeyName)
+        {
+            var forwardKey = KeyByName(forwardKeyName);
+            var reverseKey = KeyByName(reverseKeyName);
+            var plot = new Plot();
+            var source = NewElement(sourceType, "Source");
+            var target = NewElement(targetType, "Target");
+            plot.Add(source);
+            plot.Add(target);
+
+            plot.Bind(source, target, forwardKey, true);
+
+            Assert.True(HasRelation(plot, source, target, forwardKey));
+            Assert.False(HasRelation(plot, target, source, reverseKey));
+        }
+
         private static Element NewElement(ElemType type, string name)
         {
             return new Element(type, name);
@@ -115,6 +166,16 @@ namespace BaseClasses.Tests.Services
         private static object ValueFor(IParamKey key)
         {
             return key.ValueType == typeof(double) ? (object)0.5d : true;
+        }
+
+        private static IParamKey KeyByName(string name)
+        {
+            return name switch
+            {
+                "Parent" => BaseRelationKeys.Parent,
+                "Child" => BaseRelationKeys.Child,
+                _ => throw new ArgumentOutOfRangeException(nameof(name), name, null)
+            };
         }
 
         private static bool HasRelation(Plot plot, IElement source, IElement target, IParamKey key)

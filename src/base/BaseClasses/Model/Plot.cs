@@ -51,7 +51,13 @@ namespace BaseClasses.Model
         /// <param name="element">Элемент.</param>
         public void Add(IElement element)
         {
-            if (Elements.Contains(element)) return;
+            var existingElement = Elements.FirstOrDefault(candidate => candidate.Id == element.Id);
+            if (existingElement is not null)
+            {
+                if (ReferenceEquals(existingElement, element)) return;
+                throw new InvalidOperationException($"An element with id '{element.Id}' is already part of the plot.");
+            }
+
             if (element.Time == -1) element.Time = Time++;
             Elements.Add(element);
         }

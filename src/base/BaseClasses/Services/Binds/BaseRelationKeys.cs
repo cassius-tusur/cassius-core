@@ -51,5 +51,16 @@ namespace BaseClasses.Services.Binds
         /// Предмет используется в событии.
         /// </summary>
         public static readonly ParamKey<bool> Used = new ParamKey<bool>("Used");
+
+        /// <summary>
+        /// Персонаж является родителем другого персонажа.
+        /// </summary>
+        public static readonly ParamKey<bool> Parent = new ParamKey<bool>("Parent");
+
+        /// <summary>
+        /// Персонаж является ребенком другого персонажа.
+        /// </summary>
+        public static readonly ParamKey<bool> Child = new ParamKey<bool>("Child");
+
     }
 }

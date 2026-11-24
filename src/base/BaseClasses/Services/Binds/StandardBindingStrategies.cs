@@ -186,7 +186,29 @@ namespace BaseClasses.Services.Binds
         {
             UnbindLocEvent(target, source, BaseRelationKeys.Locates, value, plot);
         };
-        
+
+        public static readonly RelationBindingStrategy BindParentChild = (source, target, key, value, plot) =>
+        {
+            BindOneSide(source, target, key, value, plot);
+            BindOneSide(target, source, BaseRelationKeys.Child, value, plot);
+        };
+
+        public static readonly RelationBindingStrategy UnbindParentChild = (source, target, key, value, plot) =>
+        {
+            UnbindOneSide(source, target, key, value, plot);
+            UnbindOneSide(target, source, BaseRelationKeys.Child, value, plot);
+        };
+
+        public static readonly RelationBindingStrategy BindChildParent = (source, target, _, value, plot) =>
+        {
+            BindParentChild(target, source, BaseRelationKeys.Parent, value, plot);
+        };
+
+        public static readonly RelationBindingStrategy UnbindChildParent = (source, target, _, value, plot) =>
+        {
+            UnbindParentChild(target, source, BaseRelationKeys.Parent, value, plot);
+        };
+
         public static readonly Dictionary<RelationRoute, (RelationBindingStrategy, RelationBindingStrategy)> Routes =
             new Dictionary<RelationRoute, (RelationBindingStrategy, RelationBindingStrategy)>
             {
@@ -241,6 +263,14 @@ namespace BaseClasses.Services.Binds
                 {
                     new RelationRoute(ElemType.Event, ElemType.Location, BaseRelationKeys.Located),
                     (BindEventLoc, UnbindEventLoc)
+                },
+                {
+                    new RelationRoute(ElemType.Character, ElemType.Character, BaseRelationKeys.Parent),
+                    (BindParentChild, UnbindParentChild)
+                },
+                {
+                    new RelationRoute(ElemType.Character, ElemType.Character, BaseRelationKeys.Child),
+                    (BindChildParent, UnbindChildParent)
                 }
             };
     }

@@ -3,6 +3,7 @@ using System.Linq;
 using BaseClasses.Enum;
 using BaseClasses.Interface;
 using BaseClasses.Model;
+using BaseClasses.Model.Params;
 using BaseClasses.Services.Binds;
 using Xunit;
 
@@ -13,6 +14,33 @@ namespace BaseClasses.Tests.Model
     /// </summary>
     public class PlotTests
     {
+        [Fact]
+        public void Add_SameInstanceTwice_IsIdempotent()
+        {
+            var plot = new Plot();
+            var element = new Element(ElemType.Character, "Hero");
+
+            plot.Add(element);
+            plot.Add(element);
+
+            Assert.Single(plot.Elements);
+            Assert.Contains(element, plot.Elements);
+        }
+
+        [Fact]
+        public void Add_DistinctInstancesWithSameId_ThrowsInvalidOperationException()
+        {
+            var id = Guid.Parse("22222222-2222-2222-2222-222222222222");
+            var plot = new Plot();
+            var first = new FixedIdElement(id, ElemType.Character, "First");
+            var second = new FixedIdElement(id, ElemType.Location, "Second");
+            plot.Add(first);
+
+            Assert.Throws<InvalidOperationException>(() => plot.Add(second));
+            Assert.Single(plot.Elements);
+            Assert.Contains(first, plot.Elements);
+        }
+
         /// <summary>
         /// Проверяет, что метод Bind использует зарегистрированную стратегию связывания из Binder.
         /// </summary>
@@ -154,6 +182,25 @@ namespace BaseClasses.Tests.Model
             Assert.False(targetElementIsInPlotOnMergeCall);
             Assert.Contains(baseElement, plot.Elements);
             Assert.DoesNotContain(targetElement, plot.Elements);
+        }
+
+        private sealed class FixedIdElement : IElement
+        {
+            public FixedIdElement(Guid id, ElemType type, string name)
+            {
+                Id = id;
+                Type = type;
+                Name = name;
+                Params = new ParamBag();
+            }
+
+            public Guid Id { get; }
+            public ElemType Type { get; }
+            public string Name { get; set; }
+            public string Description { get; set; } = string.Empty;
+            public ParamBag Params { get; }
+            public int Time { get; set; } = -1;
+            public bool IsEmpty() => false;
         }
     }
 }
