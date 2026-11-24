@@ -10,7 +10,7 @@ namespace BaseClasses.Services.Binds
         public static readonly RelationBindingStrategy BindOneSide = (source, target, key, value, plot) =>
         {
             var rel = plot.Relations.FirstOrDefault(r =>
-                r.Source.Equals(source) && r.Target.Equals(target) && r.Param.Equals(key));
+                r.Source.Id == source.Id && r.Target.Id == target.Id && r.Param.Equals(key));
             if (rel is null)
                 plot.Relations.Add(new Relation(source, target, key, value));
             else
@@ -20,7 +20,7 @@ namespace BaseClasses.Services.Binds
         public static readonly RelationBindingStrategy UnbindOneSide = (source, target, key, _, plot) =>
         {
             var rel = plot.Relations.FirstOrDefault(r =>
-                r.Source.Equals(source) && r.Target.Equals(target) && r.Param.Equals(key));
+                r.Source.Id == source.Id && r.Target.Id == target.Id && r.Param.Equals(key));
             if (rel is null) return;
             plot.Relations.Remove(rel);
         };
@@ -40,9 +40,9 @@ namespace BaseClasses.Services.Binds
         public static readonly RelationBindingStrategy BindCharItem = (source, target, key, value, plot) =>
         {
             var other = plot.Relations.FirstOrDefault(r =>
-                    r.Source.Equals(target) && r.Param.Equals(BaseRelationKeys.Owned))
+                    r.Source.Id == target.Id && r.Param.Equals(BaseRelationKeys.Owned))
                 ?.Target ?? plot.Relations.FirstOrDefault(r =>
-                    r.Target.Equals(target) && r.Param.Equals(BaseRelationKeys.Owns))
+                    r.Target.Id == target.Id && r.Param.Equals(BaseRelationKeys.Owns))
                 ?.Source;
             BindOneSide(source, target, key, value, plot);
             BindOneSide(target, source, BaseRelationKeys.Owned, value, plot);
@@ -115,9 +115,9 @@ namespace BaseClasses.Services.Binds
         public static readonly RelationBindingStrategy BindItemLoc = (source, target, key, value, plot) =>
         {
             var other = plot.Relations.FirstOrDefault(r =>
-                    r.Source.Equals(source) && r.Param.Equals(BaseRelationKeys.Located))
+                    r.Source.Id == source.Id && r.Param.Equals(BaseRelationKeys.Located))
                 ?.Target ?? plot.Relations.FirstOrDefault(r =>
-                    r.Target.Equals(source) && r.Param.Equals(BaseRelationKeys.Locates))
+                    r.Target.Id == source.Id && r.Param.Equals(BaseRelationKeys.Locates))
                 ?.Source;
             BindOneSide(source, target, key, value, plot);
             BindOneSide(target, source, BaseRelationKeys.Locates, value, plot);

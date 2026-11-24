@@ -17,6 +17,172 @@ namespace BaseClasses.Tests.Services
     /// </summary>
     public class SerializerTests
     {
+        [Fact]
+        public void JsonRoundTrip_ConvertsCompatibleParameterValues()
+        {
+            var element = new Element(ElemType.Character);
+            var number = new ParamKey<double>("Number");
+            var numbers = new ParamKey<List<double>>("Numbers");
+            element.Params.Add((BaseClasses.Interface.IParamKey)number, 1);
+            element.Params.Add((BaseClasses.Interface.IParamKey)numbers, new List<int> { 1, 2 });
+            var restored = Serializer.DeserializeString<Element>(Serializer.SerializeToString(element));
+            Assert.True(element.Params.TryGetValue(number, out var original));
+            Assert.IsType<int>(original);
+            Assert.True(restored.Params.TryGet(number, out var actual));
+            Assert.Equal(1d, actual);
+            Assert.True(restored.Params.TryGet(numbers, out var list));
+            Assert.Equal(new[] { 1d, 2d }, list);
+        }
+
+        [Fact]
+        public void JsonRoundTrip_ConvertsCompatibleRelationValue()
+        {
+            var plot = new Plot();
+            var a = new Element(ElemType.Character);
+            var b = new Element(ElemType.Character);
+            plot.Add(a); plot.Add(b);
+            plot.Bind(a, b, BaseRelationKeys.Relationship, 1);
+            var restored = Serializer.DeserializeString<Plot>(Serializer.SerializeToString(plot));
+            Assert.All(plot.Relations, relation => Assert.IsType<int>(relation.Value));
+            Assert.Equal(2, restored.Relations.Count);
+            Assert.All(restored.Relations, relation => Assert.Equal(1d, Assert.IsType<double>(relation.Value)));
+        }
+        [Theory]
+        [InlineData("$type")]
+        [InlineData("$value")]
+        public void JsonSerialization_RejectsReservedNamesInParameterValues(string reservedName)
+        {
+            var key = new ParamKey<Dictionary<string, object>>("Data");
+            var element = new Element(ElemType.Character);
+            element.Params.Add(key, new Dictionary<string, object> { [reservedName] = 1 });
+            var ex = Assert.Throws<JsonException>(() => Serializer.SerializeToString(element));
+            Assert.Contains(reservedName, ex.Message);
+        }
+
+        [Fact]
+        public void JsonSerialization_RejectsReservedNamesInsideNestedRelationValues()
+        {
+            var a = new Element(ElemType.Character);
+            var b = new Element(ElemType.Character);
+            var key = new ParamKey<object>("Custom");
+            var value = new List<object> { new Dictionary<string, object> { ["$type"] = "int", ["$value"] = 123 } };
+            var relation = new Relation(a, b, key, value);
+            var ex = Assert.Throws<JsonException>(() => Serializer.SerializeToString(relation));
+            Assert.Contains("$type", ex.Message);
+        }
+
+        [Fact]
+        public void JsonSerialization_RejectsReservedPropertyNamesInObjects()
+        {
+            var element = new Element(ElemType.Character);
+            element.Params.Add(new ParamKey<ReservedProperty>("Data"), new ReservedProperty());
+            var ex = Assert.Throws<JsonException>(() => Serializer.SerializeToString(element));
+            Assert.Contains("$value", ex.Message);
+        }
+
+        public sealed class ReservedProperty
+        {
+            [System.Text.Json.Serialization.JsonPropertyName("$value")]
+            public int Value { get; set; }
+        }
+        [Fact]
+        public void JsonRelations_RoundTripThroughMessagePackWithObjectValues()
+        {
+            var plot = new Plot();
+            var a = new Element(ElemType.Character);
+            var b = new Element(ElemType.Character);
+            plot.Add(a); plot.Add(b);
+            var key = new ParamKey<object>("nested");
+            var id = Guid.NewGuid();
+            plot.Bind(a, b, key, new Dictionary<string, object> { ["id"] = id, ["values"] = new List<object> { 123, id } });
+            var jsonPlot = Serializer.DeserializeString<Plot>(Serializer.SerializeToString(plot));
+            var mp = new PlotMessagePackSerializer();
+            var restored = mp.Deserialize(mp.Serialize(jsonPlot));
+            var data = Assert.IsType<Dictionary<string, object>>(Assert.Single(restored.Relations).Value);
+            Assert.Equal(id, Assert.IsType<Guid>(data["id"]));
+            Assert.Equal(123, Assert.IsType<int>(Assert.IsType<List<object>>(data["values"])[0]));
+        }
+
+        [Fact]
+        public void PlainJsonRelationWithObjectValue_CanBeStoredInMessagePack()
+        {
+            var plot = new Plot();
+            var a = new Element(ElemType.Character);
+            var b = new Element(ElemType.Character);
+            plot.Add(a); plot.Add(b);
+            var json = $"{{\"Source\":\"{a.Id}\",\"Target\":\"{b.Id}\",\"Namespace\":\"Base\",\"Name\":\"value\",\"Type\":\"System.Object\",\"Value\":{{\"items\":[123,true]}}}}";
+            plot.Relations.Add(Serializer.DeserializeString<Relation>(json, plot));
+            var mp = new PlotMessagePackSerializer();
+            var restored = mp.Deserialize(mp.Serialize(plot));
+            var data = Assert.IsType<Dictionary<string, object>>(Assert.Single(restored.Relations).Value);
+            Assert.Equal(123, Assert.IsType<List<object>>(data["items"])[0]);
+        }
+
+        [Fact]
+        public void JsonAndMessagePack_SupportGenericObjectValues()
+        {
+            var key = new ParamKey<Dictionary<string, object>>("values");
+            var element = new Element(ElemType.Character);
+            element.Params.Add(key, new Dictionary<string, object> { ["set"] = new HashSet<int> { 1, 2 } });
+            var fromJson = Serializer.DeserializeString<Element>(Serializer.SerializeToString(element));
+            var serializer = new ElementMessagePackSerializer();
+            var result = serializer.Deserialize(serializer.Serialize(fromJson));
+            Assert.True(result.Params.TryGet(key, out var values));
+            Assert.True(Assert.IsType<HashSet<int>>(values["set"]).SetEquals(new[] { 1, 2 }));
+        }
+
+        [Fact]
+        public void LoadedUnsupportedRoute_CanBeUnboundOrRemoved()
+        {
+            var plot = new Plot();
+            var a = new Element(ElemType.Character);
+            var b = new Element(ElemType.Character);
+            plot.Add(a); plot.Add(b);
+            plot.Relations.Add(new Relation(a, b, BaseRelationKeys.Owns, true));
+            var json = Serializer.SerializeToString(plot);
+            var loaded = Serializer.DeserializeString<Plot>(json);
+            var relation = Assert.Single(loaded.Relations);
+            loaded.Unbind(relation.Source, relation.Target, relation.Param);
+            Assert.Empty(loaded.Relations);
+            Assert.Throws<ArgumentException>(() => loaded.Bind(relation.Source, relation.Target, relation.Param, true));
+            loaded = Serializer.DeserializeString<Plot>(json);
+            loaded.Remove(Assert.Single(loaded.Relations).Source);
+            Assert.Empty(loaded.Relations);
+        }
+        [Fact]
+        public void JsonRoundTrip_PreservesRuntimeTypesInsideObjectValues()
+        {
+            var key = new ParamKey<Dictionary<string, object>>("Values");
+            var id = Guid.NewGuid();
+            const decimal number = 0.1234567890123456789012345678m;
+            var source = new Element(ElemType.Character);
+            source.Params.Add(key, new Dictionary<string, object> {
+                ["Long"] = 1L, ["Decimal"] = number, ["Id"] = id,
+                ["Nested"] = new List<object> { 2L, number, id }
+            });
+            var json = Serializer.SerializeToString(source);
+            Assert.DoesNotContain("ValueEncoding", json);
+            var result = Serializer.DeserializeString<Element>(json);
+            Assert.True(result.Params.TryGet(key, out var values));
+            Assert.Equal(1L, Assert.IsType<long>(values["Long"]));
+            Assert.Equal(number, Assert.IsType<decimal>(values["Decimal"]));
+            Assert.Equal(id, Assert.IsType<Guid>(values["Id"]));
+            var nested = Assert.IsType<List<object>>(values["Nested"]);
+            Assert.Equal(number, Assert.IsType<decimal>(nested[1]));
+            var messagePack = new ElementMessagePackSerializer();
+            Assert.NotEmpty(messagePack.Serialize(result));
+        }
+
+        [Fact]
+        public void LegacyJson_ObjectValuesRemainUsableByMessagePack()
+        {
+            const string json = "{\"Id\":\"22222222-2222-2222-2222-222222222222\",\"Type\":\"Character\",\"Name\":\"\",\"Description\":\"\",\"Time\":0,\"Params\":[{\"Namespace\":\"Base\",\"Name\":\"Values\",\"Type\":\"Dictionary<string, System.Object>\",\"Value\":{\"Number\":2,\"Nested\":{\"Text\":\"hello\"}}}]}";
+            var result = Serializer.DeserializeString<Element>(json);
+            Assert.True(result.Params.TryGet(new ParamKey<Dictionary<string, object>>("Values"), out var values));
+            Assert.Equal(2, Assert.IsType<int>(values["Number"]));
+            Assert.Equal("hello", Assert.IsType<Dictionary<string, object>>(values["Nested"])["Text"]);
+            Assert.NotEmpty(new ElementMessagePackSerializer().Serialize(result));
+        }
         private static string NewTempFilePath()
         {
             return Path.Combine(Path.GetTempPath(), $"baseclasses_{Guid.NewGuid():N}.json");
@@ -24,6 +190,44 @@ namespace BaseClasses.Tests.Services
 
         private static readonly ParamKey<string> _TraitsKey = new ParamKey<string>("Traits");
         private static readonly ParamKey<int> _WeightKey = new ParamKey<int>("Weight");
+
+        [Fact]
+        public void JsonRoundTrip_RestoresNestedObjectValues()
+        {
+            var key = new ParamKey<Dictionary<string, object>>("Data");
+            var source = new Element(ElemType.Character);
+            source.Params.Add(key, new Dictionary<string, object> {
+                ["Nested"] = new Dictionary<string, object> { ["Values"] = new object[] { 2, false, "text" } }
+            });
+            var restored = Serializer.DeserializeString<Element>(Serializer.SerializeToString(source));
+            Assert.True(restored.Params.TryGet(key, out var data));
+            var nested = Assert.IsType<Dictionary<string, object>>(data["Nested"]);
+            var values = Assert.IsType<object[]>(nested["Values"]);
+            Assert.Equal(2, values[0]);
+            Assert.Equal(false, values[1]);
+            Assert.Equal("text", values[2]);
+        }
+
+        [Fact]
+        public void JsonRoundTrip_RestoresObjectValuesUsableByMessagePack()
+        {
+            var key = new ParamKey<List<Dictionary<string, object>>>("Traits", "Procedural");
+            var source = new Element(ElemType.Character);
+            source.Params.Add(key, new List<Dictionary<string, object>> {
+                new Dictionary<string, object> { ["Title"] = "Brave", ["Affection"] = 0.5, ["Count"] = 3, ["Active"] = true }
+            });
+            var fromJson = Serializer.DeserializeString<Element>(Serializer.SerializeToString(source));
+            Assert.True(fromJson.Params.TryGet(key, out var traits));
+            Assert.IsType<string>(traits[0]["Title"]);
+            Assert.IsType<double>(traits[0]["Affection"]);
+            Assert.IsType<int>(traits[0]["Count"]);
+            Assert.IsType<bool>(traits[0]["Active"]);
+            var messagePack = new ElementMessagePackSerializer();
+            var restored = messagePack.Deserialize(messagePack.Serialize(fromJson));
+            Assert.True(restored.Params.TryGet(key, out var result));
+            Assert.Equal("Brave", result[0]["Title"]);
+            Assert.Equal(0.5, result[0]["Affection"]);
+        }
 
         [Fact]
         public void SerializeToString_Element_ContainsCoreFields()

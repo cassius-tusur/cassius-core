@@ -231,6 +231,9 @@ namespace BaseClasses.Services
 
         private static RelationDto ToRelationDto(Relation relation)
         {
+            if (!relation.Param.TryConvertValue(relation.Value, out var convertedValue))
+                throw new JsonException($"Value for relation key '{relation.Param}' cannot be converted to '{relation.Param.ValueType}'.");
+            JsonObjectValueConverter.ValidatePropertyNames(convertedValue, relation.Param.ValueType, Options);
             return new RelationDto
             {
                 Source = GetElementId(RequireElement(relation.Source)),
@@ -238,7 +241,7 @@ namespace BaseClasses.Services
                 Namespace = relation.Param.Namespace,
                 Name = relation.Param.Name,
                 Type = TypeNameHelper.GetTypeName(relation.Param.ValueType),
-                Value = relation.Value
+                Value = JsonSerializer.SerializeToElement(convertedValue, relation.Param.ValueType, CreateValueOptions())
             };
         }
 
@@ -342,8 +345,16 @@ namespace BaseClasses.Services
                    ?? throw new JsonException($"Unable to create relation key '{@namespace}.{name}'.");
         }
 
+        private static JsonSerializerOptions CreateValueOptions()
+        {
+            var valueOptions = new JsonSerializerOptions(Options);
+            valueOptions.Converters.Insert(0, new JsonObjectValueConverter());
+            return valueOptions;
+        }
+
         private static object? DeserializeTypedValue(object? valueToken, Type valueType)
         {
+            var valueOptions = CreateValueOptions();
             switch (valueToken)
             {
                 case null:
@@ -351,12 +362,12 @@ namespace BaseClasses.Services
                                                   jsonElement.ValueKind == JsonValueKind.Undefined:
                     return null;
                 case JsonElement jsonElement:
-                    return JsonSerializer.Deserialize(jsonElement.GetRawText(), valueType, Options);
+                    return JsonSerializer.Deserialize(jsonElement.GetRawText(), valueType, valueOptions);
             }
 
             return valueType.IsInstanceOfType(valueToken)
                 ? valueToken
-                : JsonSerializer.Deserialize(JsonSerializer.Serialize(valueToken, Options), valueType, Options);
+                : JsonSerializer.Deserialize(JsonSerializer.Serialize(valueToken, valueOptions), valueType, valueOptions);
         }
 
         

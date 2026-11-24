@@ -5,6 +5,7 @@ using BaseClasses.Interface;
 using BaseClasses.Model;
 using BaseClasses.Model.Params;
 using BaseClasses.Services.Binds;
+using BaseClasses.Services;
 using Xunit;
 
 namespace BaseClasses.Tests.Model
@@ -14,6 +15,78 @@ namespace BaseClasses.Tests.Model
     /// </summary>
     public class PlotTests
     {
+        [Fact]
+        public void Remove_CustomElementCopy_RemovesCanonicalElementAndRelations()
+        {
+            var plot = new Plot();
+            var source = new FixedIdElement(Guid.NewGuid(), ElemType.Character, "source");
+            var target = new FixedIdElement(Guid.NewGuid(), ElemType.Character, "target");
+            plot.Add(source);
+            plot.Add(target);
+            plot.Bind(source, target, new ParamKey<bool>("custom"), true);
+            plot.Remove(new FixedIdElement(source.Id, source.Type, source.Name));
+            Assert.Single(plot.Elements);
+            Assert.Same(target, plot.Elements.Single());
+            Assert.Empty(plot.Relations);
+        }
+
+        [Fact]
+        public void Add_CustomElementsWithValueEquality_UsesIds()
+        {
+            var plot = new Plot();
+            plot.Add(new ValueEqualElement(Guid.NewGuid()));
+            plot.Add(new ValueEqualElement(Guid.NewGuid()));
+            Assert.Equal(2, plot.Elements.Count);
+        }
+
+        [Fact]
+        public void Bind_CustomElementsWithValueEquality_KeepsDistinctRelations()
+        {
+            var plot = new Plot();
+            var first = new ValueEqualElement(Guid.NewGuid());
+            var second = new ValueEqualElement(Guid.NewGuid());
+            var target = new ValueEqualElement(Guid.NewGuid());
+            plot.Add(first);
+            plot.Add(second);
+            plot.Add(target);
+            var key = new ParamKey<bool>("custom");
+            plot.Bind(first, target, key, true);
+            plot.Bind(second, target, key, true);
+            Assert.Equal(2, plot.Relations.Count);
+            plot.Unbind(first, target, key);
+            Assert.Same(second, Assert.Single(plot.Relations).Source);
+        }
+
+        private sealed class ValueEqualElement : IElement
+        {
+            public ValueEqualElement(Guid id) { Id = id; }
+            public Guid Id { get; }
+            public ElemType Type => ElemType.Character;
+            public string Name { get; set; } = "";
+            public string Description { get; set; } = "";
+            public ParamBag Params { get; } = new ParamBag();
+            public int Time { get; set; } = -1;
+            public bool IsEmpty() => false;
+            public override bool Equals(object? other) => other is ValueEqualElement;
+            public override int GetHashCode() => 0;
+        }
+        [Fact]
+        public void Bind_EquivalentInstances_UsesInstancesOwnedByPlot()
+        {
+            var plot = new Plot();
+            var source = new Element(ElemType.Character);
+            var target = new Element(ElemType.Character);
+            plot.Add(source);
+            plot.Add(target);
+            var serializer = new ElementMessagePackSerializer();
+            var sourceCopy = serializer.Deserialize(serializer.Serialize(source));
+            var targetCopy = serializer.Deserialize(serializer.Serialize(target));
+            plot.Bind(sourceCopy, targetCopy, new ParamKey<bool>("custom"), true);
+            var relation = Assert.Single(plot.Relations);
+            Assert.Same(source, relation.Source);
+            Assert.Same(target, relation.Target);
+        }
+
         [Fact]
         public void Add_SameInstanceTwice_IsIdempotent()
         {

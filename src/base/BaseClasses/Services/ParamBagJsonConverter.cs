@@ -21,6 +21,8 @@ namespace BaseClasses.Services
             }
 
             var bag = new ParamBag();
+            var valueOptions = new JsonSerializerOptions(options);
+            valueOptions.Converters.Insert(0, new JsonObjectValueConverter());
 
             while (reader.Read())
             {
@@ -54,7 +56,7 @@ namespace BaseClasses.Services
                 var rawValue = valueElement.ValueKind == JsonValueKind.Undefined ||
                                valueElement.ValueKind == JsonValueKind.Null
                     ? null
-                    : JsonSerializer.Deserialize(valueElement.GetRawText(), valueType, options);
+                    : JsonSerializer.Deserialize(valueElement.GetRawText(), valueType, valueOptions);
 
                 if (!key.TryConvertValue(rawValue, out var convertedValue))
                 {
@@ -70,16 +72,21 @@ namespace BaseClasses.Services
 
         public override void Write(Utf8JsonWriter writer, ParamBag value, JsonSerializerOptions options)
         {
+            var valueOptions = new JsonSerializerOptions(options);
+            valueOptions.Converters.Insert(0, new JsonObjectValueConverter());
             writer.WriteStartArray();
 
             foreach (var (key, paramValue) in value.Enumerate())
             {
+                if (!key.TryConvertValue(paramValue, out var convertedValue))
+                    throw new JsonException($"Value for key '{key}' cannot be converted to '{key.ValueType}'.");
+                JsonObjectValueConverter.ValidatePropertyNames(convertedValue, key.ValueType, options);
                 writer.WriteStartObject();
                 writer.WriteString("Namespace", key.Namespace);
                 writer.WriteString("Name", key.Name);
                 writer.WriteString("Type", TypeNameHelper.GetTypeName(key.ValueType));
                 writer.WritePropertyName("Value");
-                JsonSerializer.Serialize(writer, paramValue, key.ValueType, options);
+                JsonSerializer.Serialize(writer, convertedValue, key.ValueType, valueOptions);
                 writer.WriteEndObject();
             }
 

@@ -42,7 +42,7 @@ namespace BaseClasses.Tests.Services
         }
 
         [Fact]
-        public void UnregisteredStandardRouteDoesNotFallBackToOneSidedRelation()
+        public void ExplicitlyUnregisteredStandardRouteFallsBackToOneSidedRelation()
         {
             var binder = new Binder();
             var plot = new Plot(binder);
@@ -51,8 +51,10 @@ namespace BaseClasses.Tests.Services
             plot.Add(source);
             plot.Add(target);
             Assert.True(binder.Unregister(ElemType.Character, ElemType.Item, BaseRelationKeys.Owns));
-            Assert.Throws<ArgumentException>(() => plot.Bind(source, target, BaseRelationKeys.Owns, true));
-            Assert.Throws<ArgumentException>(() => plot.Unbind(source, target, BaseRelationKeys.Owns));
+            plot.Bind(source, target, BaseRelationKeys.Owns, true);
+            Assert.Single(plot.Relations);
+            plot.Unbind(source, target, BaseRelationKeys.Owns);
+            Assert.Empty(plot.Relations);
         }
         /// <summary>
         /// Проверяет, что регистрация стратегии связывания с null-значением выбрасывает ArgumentNullException.

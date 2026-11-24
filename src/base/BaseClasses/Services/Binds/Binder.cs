@@ -21,6 +21,8 @@ namespace BaseClasses.Services.Binds
         /// <summary>
         /// Стратегии отвязывания для каждой комбинации типов элементов и ключа параметра.
         /// </summary>
+        private readonly HashSet<RelationRoute> _explicitlyUnregistered = new HashSet<RelationRoute>();
+
         private readonly Dictionary<RelationRoute, RelationBindingStrategy> _unbindStrategies =
             new Dictionary<RelationRoute, RelationBindingStrategy>();
         
@@ -71,6 +73,7 @@ namespace BaseClasses.Services.Binds
         {
             if (bindStrategy is null) throw new ArgumentNullException(nameof(bindStrategy));
             if (unbindStrategy is null) throw new ArgumentNullException(nameof(unbindStrategy));
+            _explicitlyUnregistered.Remove(route);
             _bindStrategies[route] = bindStrategy;
             _unbindStrategies[route] = unbindStrategy;
         }
@@ -99,6 +102,7 @@ namespace BaseClasses.Services.Binds
         {
             var removedBind = _bindStrategies.Remove(route);
             var removedUnbind = _unbindStrategies.Remove(route);
+            if (removedBind || removedUnbind) _explicitlyUnregistered.Add(route);
             return removedBind || removedUnbind;
         }
 
@@ -143,14 +147,16 @@ namespace BaseClasses.Services.Binds
                 strategy(source, target, paramKey, null, plot);
             else
             {
-                ValidateUnregisteredRoute(route);
+                if (!plot.Relations.Any(relation => relation.Source.Id == source.Id &&
+                    relation.Target.Id == target.Id && relation.Param.Equals(paramKey)))
+                    ValidateUnregisteredRoute(route);
                 StandardBindingStrategies.UnbindOneSide(source, target, paramKey, null, plot);
             }
         }
 
-        private static void ValidateUnregisteredRoute(RelationRoute route)
+        private void ValidateUnregisteredRoute(RelationRoute route)
         {
-            if (StandardBindingStrategies.Routes.Keys.Any(standard => standard.ParamKey.Equals(route.ParamKey)))
+            if (!_explicitlyUnregistered.Contains(route) && StandardBindingStrategies.Routes.Keys.Any(standard => standard.ParamKey.Equals(route.ParamKey)))
             {
                 throw new ArgumentException(
                     $"Relation key {route.ParamKey} is not supported for element route {route.SourceType} -> {route.TargetType}.",

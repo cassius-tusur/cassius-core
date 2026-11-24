@@ -17,7 +17,15 @@ namespace BaseClasses.Model
         /// <summary>
         /// Элементы истории.
         /// </summary>
-        public HashSet<IElement> Elements { get; } = new HashSet<IElement>();
+        public HashSet<IElement> Elements { get; } = new HashSet<IElement>(ElementIdComparer.Instance);
+
+        private sealed class ElementIdComparer : IEqualityComparer<IElement>
+        {
+            public static readonly ElementIdComparer Instance = new ElementIdComparer();
+            public bool Equals(IElement? x, IElement? y) => ReferenceEquals(x, y) ||
+                (x != null && y != null && x.Id == y.Id);
+            public int GetHashCode(IElement element) => element.Id.GetHashCode();
+        }
 
         /// <summary>
         /// Связи между элементами истории.
@@ -68,13 +76,13 @@ namespace BaseClasses.Model
         /// <param name="element">Удаляемый элемент.</param>
         public void Remove(IElement element)
         {
-            if (!Elements.Contains(element)) return;
-            foreach (var r in Relations.Where(r => r.Source.Equals(element)
-                                                   || r.Target.Equals(element)).ToList())
+            if (!Elements.TryGetValue(element, out var existingElement)) return;
+            foreach (var r in Relations.Where(r => r.Source.Id == existingElement.Id
+                                                   || r.Target.Id == existingElement.Id).ToList())
             {
                 Binder.Unbind(r.Source, r.Target, r.Param, this);
             }
-            Elements.Remove(element);
+            Elements.Remove(existingElement);
         }
 
         /// <summary>
@@ -90,10 +98,10 @@ namespace BaseClasses.Model
         /// определенному в paramKey.</exception>
         public void Bind(IElement source, IElement target, IParamKey paramKey, object? value)
         {
-            if (!Elements.Contains(source))
-                throw new KeyNotFoundException($"Source elements ({source}) must be part of the plot.");
-            if (!Elements.Contains(target))
-                throw new KeyNotFoundException($"Target elements ({target}) must be part of the plot.");
+            source = Elements.FirstOrDefault(element => element.Id == source.Id)
+                ?? throw new KeyNotFoundException($"Source elements ({source}) must be part of the plot.");
+            target = Elements.FirstOrDefault(element => element.Id == target.Id)
+                ?? throw new KeyNotFoundException($"Target elements ({target}) must be part of the plot.");
             if (!paramKey.IsTypeMatch(value))
                 throw new ArgumentException($"Value {value} does not match the type defined in paramKey {paramKey}.");
             Binder.Bind(source, target, paramKey, value, this);
@@ -109,10 +117,10 @@ namespace BaseClasses.Model
         /// связи не являются частью истории.</exception>
         public void Unbind(IElement source, IElement target, IParamKey paramKey)
         {
-            if (!Elements.Contains(source))
-                throw new KeyNotFoundException($"Source elements ({source}) must be part of the plot.");
-            if (!Elements.Contains(target))
-                throw new KeyNotFoundException($"Target elements ({target}) must be part of the plot.");
+            source = Elements.FirstOrDefault(element => element.Id == source.Id)
+                ?? throw new KeyNotFoundException($"Source elements ({source}) must be part of the plot.");
+            target = Elements.FirstOrDefault(element => element.Id == target.Id)
+                ?? throw new KeyNotFoundException($"Target elements ({target}) must be part of the plot.");
             Binder.Unbind(source, target, paramKey, this);
         }
 

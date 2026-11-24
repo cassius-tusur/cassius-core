@@ -63,7 +63,7 @@ namespace BaseClasses.Services
             }
 
             var relationsToMove = plot.Relations
-                .Where(r => r.Source.Equals(mergedElement) || r.Target.Equals(mergedElement))
+                .Where(r => r.Source.Id == mergedElement.Id || r.Target.Id == mergedElement.Id)
                 .ToList();
 
             foreach (var relation in relationsToMove)
@@ -71,12 +71,12 @@ namespace BaseClasses.Services
                 // Удаляем старую связь с mergedElement и затем пересоздаем ее на baseElement.
                 plot.Relations.Remove(relation);
 
-                var newSource = relation.Source.Equals(mergedElement) ? baseElement : relation.Source;
-                var newTarget = relation.Target.Equals(mergedElement) ? baseElement : relation.Target;
+                var newSource = relation.Source.Id == mergedElement.Id ? baseElement : relation.Source;
+                var newTarget = relation.Target.Id == mergedElement.Id ? baseElement : relation.Target;
 
                 var conflict = plot.Relations.FirstOrDefault(existing =>
-                    existing.Source.Equals(newSource) &&
-                    existing.Target.Equals(newTarget) &&
+                    existing.Source.Id == newSource.Id &&
+                    existing.Target.Id == newTarget.Id &&
                     existing.Param.Equals(relation.Param));
 
                 if (conflict is null)

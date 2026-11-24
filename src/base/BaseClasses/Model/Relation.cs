@@ -69,7 +69,7 @@ namespace BaseClasses.Model
         {
             if (other is null) return false;
             if (ReferenceEquals(this, other)) return true;
-            return Source.Equals(other.Source) && Target.Equals(other.Target) && Param.Equals(other.Param);
+            return Source.Id == other.Source.Id && Target.Id == other.Target.Id && Param.Equals(other.Param);
         }
 
         public override bool Equals(object? obj)
@@ -81,7 +81,7 @@ namespace BaseClasses.Model
 
         public override int GetHashCode()
         {
-            return HashCode.Combine(Source, Target, Param);
+            return HashCode.Combine(Source.Id, Target.Id, Param);
         }
     }
 }
