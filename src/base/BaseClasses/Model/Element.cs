@@ -11,7 +11,7 @@ namespace BaseClasses.Model
     /// </summary>
     public class Element : IElement, IEquatable<Element>
     {
-        private readonly Guid _id = Guid.NewGuid();
+        private readonly Guid _id;
 
         public Guid Id => _id;
         
@@ -48,7 +48,14 @@ namespace BaseClasses.Model
         /// <param name="description">Описание элемента.</param>
         /// <param name="time">Время создания элемента.</param>
         public Element(ElemType type, string name = "", string description = "", int time = -1)
+            : this(Guid.NewGuid(), type, name, description, time)
         {
+        }
+
+        protected internal Element(Guid id, ElemType type, string name, string description, int time)
+        {
+            if (id == Guid.Empty) throw new ArgumentException("Element ID cannot be empty.", nameof(id));
+            _id = id;
             Type = type;
             Name = name;
             Description = description;

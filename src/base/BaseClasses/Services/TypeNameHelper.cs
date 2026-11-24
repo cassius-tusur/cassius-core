@@ -6,7 +6,7 @@ namespace BaseClasses.Services
 {
     /// <summary>
     /// Сервис для получения строкового представления типа и разрешения типа по строковому имени.
-    /// Поддерживает базовые типы и некоторые обобщенные типы (например, List&lt;T&gt;, Dictionary&lt;TKey, TValue&gt;).
+    /// Поддерживает базовые типы и обобщенные типы из загруженных сборок.
     /// </summary>
     public static class TypeNameHelper
     {
@@ -45,8 +45,10 @@ namespace BaseClasses.Services
             if (!type.IsGenericType) return type.FullName ?? type.Name;
             
             var genericDef = type.GetGenericTypeDefinition();
-            string genericName = genericDef.Name;
-            genericName = genericName[..genericName.IndexOf('`')];
+            string genericName = genericDef == typeof(List<>) ? "List" :
+                genericDef == typeof(Dictionary<,>) ? "Dictionary" :
+                genericDef == typeof(Nullable<>) ? "Nullable" :
+                genericDef.FullName ?? genericDef.Name;
             var args = type.GetGenericArguments().Select(GetTypeName);
             return $"{genericName}<{string.Join(", ", args)}>";
 
@@ -80,7 +82,11 @@ namespace BaseClasses.Services
             {
                 "List" => typeof(List<>),
                 "Dictionary" => typeof(Dictionary<,>),
-                _ => throw new TypeLoadException($"Generic type '{genericName}' not supported.")
+                "Nullable" => typeof(Nullable<>),
+                _ => AppDomain.CurrentDomain.GetAssemblies()
+                    .Select(assembly => assembly.GetType(genericName))
+                    .FirstOrDefault(type => type != null && type.IsGenericTypeDefinition)
+                    ?? throw new TypeLoadException($"Generic type '{genericName}' not found.")
             };
             return genericType.MakeGenericType(argTypes);
         }
