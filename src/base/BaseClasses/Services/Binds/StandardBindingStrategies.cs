@@ -209,6 +209,28 @@ namespace BaseClasses.Services.Binds
             UnbindParentChild(target, source, BaseRelationKeys.Parent, value, plot);
         };
 
+        public static readonly RelationBindingStrategy BindContains = (source, target, key, value, plot) =>
+        {
+            BindOneSide(source, target, key, value, plot);
+            BindOneSide(target, source, BaseRelationKeys.ContainedBy, value, plot);
+        };
+
+        public static readonly RelationBindingStrategy UnbindContains = (source, target, key, value, plot) =>
+        {
+            UnbindOneSide(source, target, key, value, plot);
+            UnbindOneSide(target, source, BaseRelationKeys.ContainedBy, value, plot);
+        };
+
+        public static readonly RelationBindingStrategy BindContainedBy = (source, target, _, value, plot) =>
+        {
+            BindContains(target, source, BaseRelationKeys.Contains, value, plot);
+        };
+
+        public static readonly RelationBindingStrategy UnbindContainedBy = (source, target, _, value, plot) =>
+        {
+            UnbindContains(target, source, BaseRelationKeys.Contains, value, plot);
+        };
+
         public static readonly Dictionary<RelationRoute, (RelationBindingStrategy, RelationBindingStrategy)> Routes =
             new Dictionary<RelationRoute, (RelationBindingStrategy, RelationBindingStrategy)>
             {
@@ -271,6 +293,18 @@ namespace BaseClasses.Services.Binds
                 {
                     new RelationRoute(ElemType.Character, ElemType.Character, BaseRelationKeys.Child),
                     (BindChildParent, UnbindChildParent)
+                },
+                {
+                    new RelationRoute(ElemType.Location, ElemType.Location, BaseRelationKeys.Contains),
+                    (BindContains, UnbindContains)
+                },
+                {
+                    new RelationRoute(ElemType.Location, ElemType.Location, BaseRelationKeys.ContainedBy),
+                    (BindContainedBy, UnbindContainedBy)
+                },
+                {
+                    new RelationRoute(ElemType.Location, ElemType.Location, BaseRelationKeys.Passage),
+                    (BindCharacters, UnbindCharacters)
                 }
             };
     }

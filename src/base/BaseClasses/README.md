@@ -16,8 +16,11 @@ standard route can be removed one-sided; new bindings for that route are rejecte
 | --- | --- | --- | --- |
 | `Parent` | `Child` | `Character` → `Character` | Parent to child; multiple parents are permitted. |
 | `Child` | `Parent` | `Character` → `Character` | Child to parent. |
+| `Contains` | `ContainedBy` | `Location` → `Location` | Container to contained location. |
+| `ContainedBy` | `Contains` | `Location` → `Location` | Contained location to container. |
+| `Passage` | `Passage` | `Location` ↔ `Location` | Symmetric location-to-location passage. |
 
-Both keys are `ParamKey<bool>` values in `BaseRelationKeys`.
+All five keys are `ParamKey<bool>` values in `BaseRelationKeys`.
 # MessagePack для элемента
 
 `ElementMessagePackSerializer` сохраняет общие поля отдельного `IElement`: GUID, тип, название, описание, время и типизированные параметры. Для всего сюжета используйте `PlotMessagePackSerializer`.
