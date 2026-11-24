@@ -27,6 +27,9 @@ namespace BaseClasses.Tests.Services
             yield return new object[] { ElemType.Event, ElemType.Location, BaseRelationKeys.Located, BaseRelationKeys.Locates };
             yield return new object[] { ElemType.Character, ElemType.Character, BaseRelationKeys.Parent, BaseRelationKeys.Child };
             yield return new object[] { ElemType.Character, ElemType.Character, BaseRelationKeys.Child, BaseRelationKeys.Parent };
+            yield return new object[] { ElemType.Location, ElemType.Location, BaseRelationKeys.Contains, BaseRelationKeys.ContainedBy };
+            yield return new object[] { ElemType.Location, ElemType.Location, BaseRelationKeys.ContainedBy, BaseRelationKeys.Contains };
+            yield return new object[] { ElemType.Location, ElemType.Location, BaseRelationKeys.Passage, BaseRelationKeys.Passage };
         }
 
         [Theory]
@@ -139,6 +142,9 @@ namespace BaseClasses.Tests.Services
         {
             yield return new object[] { ElemType.Character, ElemType.Location, BaseRelationKeys.Parent };
             yield return new object[] { ElemType.Character, ElemType.Location, BaseRelationKeys.Child };
+            yield return new object[] { ElemType.Location, ElemType.Character, BaseRelationKeys.Contains };
+            yield return new object[] { ElemType.Location, ElemType.Character, BaseRelationKeys.ContainedBy };
+            yield return new object[] { ElemType.Location, ElemType.Character, BaseRelationKeys.Passage };
         }
 
         [Theory]

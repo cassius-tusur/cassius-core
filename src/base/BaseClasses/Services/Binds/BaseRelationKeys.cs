@@ -62,5 +62,11 @@ namespace BaseClasses.Services.Binds
         /// </summary>
         public static readonly ParamKey<bool> Child = new ParamKey<bool>("Child");
 
+        /// <summary>Локация структурно содержит другую локацию.</summary>
+        public static readonly ParamKey<bool> Contains = new ParamKey<bool>("Contains");
+        /// <summary>Локация структурно содержится в другой локации.</summary>
+        public static readonly ParamKey<bool> ContainedBy = new ParamKey<bool>("ContainedBy");
+        /// <summary>Локации соединены проходом.</summary>
+        public static readonly ParamKey<bool> Passage = new ParamKey<bool>("Passage");
     }
 }
