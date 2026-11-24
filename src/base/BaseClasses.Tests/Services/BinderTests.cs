@@ -12,6 +12,48 @@ namespace BaseClasses.Tests.Services
     /// </summary>
     public class BinderTests
     {
+        [Fact]
+        public void StandardKeyWithUnsupportedRouteIsRejectedForBindAndUnbind()
+        {
+            var plot = new Plot();
+            var source = new Element(ElemType.Character);
+            var target = new Element(ElemType.Character);
+            plot.Add(source);
+            plot.Add(target);
+            Assert.Throws<ArgumentException>(() => plot.Bind(source, target, BaseRelationKeys.Owns, true));
+            Assert.Throws<ArgumentException>(() => plot.Unbind(source, target, BaseRelationKeys.Owns));
+        }
+
+        [Fact]
+        public void RegisteredCustomStrategyForStandardKeyTakesPrecedence()
+        {
+            var binder = new Binder();
+            var plot = new Plot(binder);
+            var source = new Element(ElemType.Character);
+            var target = new Element(ElemType.Location);
+            plot.Add(source);
+            plot.Add(target);
+            binder.Register(ElemType.Character, ElemType.Location, BaseRelationKeys.Parent,
+                StandardBindingStrategies.BindOneSide, StandardBindingStrategies.UnbindOneSide);
+            plot.Bind(source, target, BaseRelationKeys.Parent, true);
+            Assert.Single(plot.Relations);
+            plot.Unbind(source, target, BaseRelationKeys.Parent);
+            Assert.Empty(plot.Relations);
+        }
+
+        [Fact]
+        public void UnregisteredStandardRouteDoesNotFallBackToOneSidedRelation()
+        {
+            var binder = new Binder();
+            var plot = new Plot(binder);
+            var source = new Element(ElemType.Character);
+            var target = new Element(ElemType.Item);
+            plot.Add(source);
+            plot.Add(target);
+            Assert.True(binder.Unregister(ElemType.Character, ElemType.Item, BaseRelationKeys.Owns));
+            Assert.Throws<ArgumentException>(() => plot.Bind(source, target, BaseRelationKeys.Owns, true));
+            Assert.Throws<ArgumentException>(() => plot.Unbind(source, target, BaseRelationKeys.Owns));
+        }
         /// <summary>
         /// Проверяет, что регистрация стратегии связывания с null-значением выбрасывает ArgumentNullException.
         /// </summary>

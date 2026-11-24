@@ -120,7 +120,10 @@ namespace BaseClasses.Services.Binds
             if (_bindStrategies.TryGetValue(route, out var strategy))
                 strategy(source, target, paramKey, value, plot);
             else
+            {
+                ValidateUnregisteredRoute(route);
                 StandardBindingStrategies.BindOneSide(source, target, paramKey, value, plot);
+            }
         }
 
         /// <summary>
@@ -139,7 +142,20 @@ namespace BaseClasses.Services.Binds
             if (_unbindStrategies.TryGetValue(route, out var strategy))
                 strategy(source, target, paramKey, null, plot);
             else
+            {
+                ValidateUnregisteredRoute(route);
                 StandardBindingStrategies.UnbindOneSide(source, target, paramKey, null, plot);
+            }
+        }
+
+        private static void ValidateUnregisteredRoute(RelationRoute route)
+        {
+            if (StandardBindingStrategies.Routes.Keys.Any(standard => standard.ParamKey.Equals(route.ParamKey)))
+            {
+                throw new ArgumentException(
+                    $"Relation key {route.ParamKey} is not supported for element route {route.SourceType} -> {route.TargetType}.",
+                    nameof(route));
+            }
         }
     }
 }

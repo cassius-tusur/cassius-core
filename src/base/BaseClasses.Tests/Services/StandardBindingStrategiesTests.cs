@@ -135,27 +135,42 @@ namespace BaseClasses.Tests.Services
             Assert.True(HasRelation(plot, child, thirdParent, BaseRelationKeys.Child));
         }
 
+        public static IEnumerable<object[]> UnsupportedRouteCases()
+        {
+            yield return new object[] { ElemType.Character, ElemType.Location, BaseRelationKeys.Parent };
+            yield return new object[] { ElemType.Character, ElemType.Location, BaseRelationKeys.Child };
+        }
+
         [Theory]
-        [InlineData(ElemType.Character, ElemType.Location, "Parent", "Child")]
-        [InlineData(ElemType.Character, ElemType.Location, "Child", "Parent")]
-        public void Bind_UnsupportedElementPairs_DoNotCreateReciprocalRelations(
+        [MemberData(nameof(UnsupportedRouteCases))]
+        public void Bind_ReservedKeyForUnsupportedElementPair_ThrowsArgumentException(
             ElemType sourceType,
             ElemType targetType,
-            string forwardKeyName,
-            string reverseKeyName)
+            IParamKey key)
         {
-            var forwardKey = KeyByName(forwardKeyName);
-            var reverseKey = KeyByName(reverseKeyName);
             var plot = new Plot();
             var source = NewElement(sourceType, "Source");
             var target = NewElement(targetType, "Target");
             plot.Add(source);
             plot.Add(target);
 
-            plot.Bind(source, target, forwardKey, true);
+            Assert.Throws<ArgumentException>(() => plot.Bind(source, target, key, true));
+        }
 
-            Assert.True(HasRelation(plot, source, target, forwardKey));
-            Assert.False(HasRelation(plot, target, source, reverseKey));
+        [Theory]
+        [MemberData(nameof(UnsupportedRouteCases))]
+        public void Unbind_ReservedKeyForUnsupportedElementPair_ThrowsArgumentException(
+            ElemType sourceType,
+            ElemType targetType,
+            IParamKey key)
+        {
+            var plot = new Plot();
+            var source = NewElement(sourceType, "Source");
+            var target = NewElement(targetType, "Target");
+            plot.Add(source);
+            plot.Add(target);
+
+            Assert.Throws<ArgumentException>(() => plot.Unbind(source, target, key));
         }
 
         private static Element NewElement(ElemType type, string name)
@@ -166,16 +181,6 @@ namespace BaseClasses.Tests.Services
         private static object ValueFor(IParamKey key)
         {
             return key.ValueType == typeof(double) ? (object)0.5d : true;
-        }
-
-        private static IParamKey KeyByName(string name)
-        {
-            return name switch
-            {
-                "Parent" => BaseRelationKeys.Parent,
-                "Child" => BaseRelationKeys.Child,
-                _ => throw new ArgumentOutOfRangeException(nameof(name), name, null)
-            };
         }
 
         private static bool HasRelation(Plot plot, IElement source, IElement target, IParamKey key)
